@@ -195,5 +195,31 @@ def winner_by_date(chat_id, date):
     sql_query = f"""SELECT UserId FROM games_{chat_id} WHERE Date = TIMESTAMP('{date}')"""
     result_df = pd.read_sql(sql=sql_query, con=engine)
 
-    return result_df['UserId'].values
+    return get_username_by_id(result_df['UserId'].values[0], chat_id)
 
+def getWinnerTable(chat_id):
+    engine = connect_to_db()
+    sql_query_winners = f"""SELECT UserId FROM games_{chat_id}"""
+    result_df_winners = pd.read_sql(sql=sql_query_winners, con=engine)
+
+    return result_df_winners.values
+
+
+def getPlayersTable(chat_id):
+    engine = connect_to_db()
+    sql_query_users = f"""SELECT DISTINCT UserId FROM players_{chat_id}"""
+    result_df_players = pd.read_sql(sql=sql_query_users, con=engine)
+
+    return result_df_players.values
+
+
+def showWinningCount(chat_id):
+    players = getPlayersTable(chat_id)
+    winners = getWinnerTable(chat_id)
+    engine = connect_to_db()
+    sql_query = f"""SELECT UserId, COUNT(*) FROM games_{chat_id} GROUP BY UserId ORDER BY COUNT(*) DESC"""
+    result_df = pd.read_sql(sql=sql_query, con=engine)
+
+    return result_df.values
+
+print(winner_by_date("4108565981", "2024-03-26"))

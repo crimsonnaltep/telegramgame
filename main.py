@@ -1,5 +1,5 @@
 from aiogram import executor, Dispatcher, Bot, types
-from database import create_table, reg_user, add_winner, get_dates, winner_by_date, get_username_by_id
+from database import create_table, reg_user, add_winner, get_dates, winner_by_date, get_username_by_id, showWinningCount
 import time
 from datetime import datetime
 
@@ -61,7 +61,6 @@ async def echo_bot(msg: types.Message) -> None:
     today = datetime.now()
     winningDate = today.strftime("%Y-%m-%d")
     formatted_dates = [date.strftime('%Y-%m-%d') for date in get_dates(abs(msg.chat.id))]
-    print(winningDate, get_dates(abs(msg.chat.id)))
     if winningDate not in formatted_dates:
         win = add_winner(abs(msg.chat.id))
         if(msg.from_user.username == "VagOnOff"):
@@ -69,8 +68,18 @@ async def echo_bot(msg: types.Message) -> None:
         else:
             await msg.answer(f"Поздавряем, сегодня выиграл @{win}")
     else:
-        await msg.answer(f"Сегодня уже был победитель !")
+        await msg.answer(f"Сегодня уже была игра ! Победил @{winner_by_date(abs(msg.chat.id), winningDate)}")
 
+
+@dp.message_handler(commands=["show_table"])
+async def echo_bot(msg: types.Message) -> None:
+    results = showWinningCount(abs(msg.chat.id))
+    formattedAnswer = """Таблица лидеров: \n"""
+    placeNumber = 1
+    for i in results:
+        formattedAnswer = formattedAnswer + f"{placeNumber}: {get_username_by_id(i[0], abs(msg.chat.id))} - {i[1]}\n"
+        placeNumber += 1
+    await msg.answer(f"""{formattedAnswer}""")
 
 
 if __name__ == "__main__":
