@@ -1,86 +1,66 @@
-from aiogram import executor, Dispatcher, Bot, types
-from database import create_table, reg_user, add_winner, get_dates, winner_by_date, get_username_by_id, showWinningCount
-import time
+import asyncio
+import aiogram.methods.get_chat_member as get_chat_member
+from aiogram import Dispatcher, Bot, types
+from aiogram.filters import Command
+
+from database import create_table, reg_user, add_winner, winner_by_date, \
+    show_winning_count, get_result_today, check_chat_db, select_winner
 from datetime import datetime
 
 token = "7050138133:AAEgkBFFsJKmV7xtQHJRXHVJ-l1ydAgKoXU"
 
+dp = Dispatcher()
 bot = Bot(token)
-dp = Dispatcher(bot)
 
 
-@dp.message_handler(commands=["start"])
-async def echo_bot(msg: types.Message) -> None:
-    await msg.answer("Набор в бар голубая устрица !")
-    create_table(abs(msg.chat.id))
+async def get_username(chat_id, user_id):
+    member = await bot(get_chat_member.GetChatMember(chat_id=chat_id, user_id=user_id))
+    return member.user.username
 
 
-@dp.message_handler(commands=["reg"])
-async def echo_bot(msg: types.Message) -> None:
-    if (msg.from_user.username == "prsiik"):
-        await msg.answer("Так, стоп....")
-        time.sleep(3)
-        await msg.answer("Ой Алиса привет !")
-        time.sleep(3)
-        await msg.answer("Мой создатель часто втыкал когда делал меня, и всегда после того как писал тебе")
-        time.sleep(3)
-        await msg.answer("Как будто у него вся кровь из головы уходила куда-то в другое место....")
-        time.sleep(3)
-        await msg.answer("Но ладно, whatever makes him happy")
-        time.sleep(3)
-        await msg.answer("Он просил передать тебе кое-что...")
-        time.sleep(3)
-        await msg.answer("""
-            ⠀⠀⠀⠀⠀⢀⠴⠚⠉⠉⠑⠦⠴⠚⠋⠉⠒⢄⠀⠀⠀⠀
-⠀⠀⠀⠀⢠⠋⠀⠀⠀⠀⠀⠀⠀⠸⣄⠀⢘⡄⢷⠀⠀⠀
-⠀⠀⠀⠀⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⣏⠀⣼⠀⠀⠀
-⠀⠀⠀⠀⠈⢇⢰⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢠⠏⠀⠀⠀
-⠀⠀⠀⠀⠀⠈⢣⡳⣄⠀⠀⠀⠀⠀⠀⢀⡴⠋⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠙⠢⣕⠢⢄⢀⡠⠖⠋⠀⠀⠀⠀⠀⠀
-⠀⠀⣠⡴⠒⠦⣄⠀⠀⠀⠉⠉⠁⠀⠀⣀⡤⠤⢄⡀⠀⠀
-⢀⡞⠁⠀⠀⠀⠈⠛⠉⠉⠉⠉⠉⠉⠲⠏⠀⠀⠀⠘⢦⠀
-⢸⡇⠀⠀⠀⠀⢀⡖⢳⠀⣠⠺⡄⠀⠀⠀⠀⠀⠀⠀⢘⡆
-⠀⢻⠇⠀⠀⢀⣾⣶⡏⢀⣿⣴⠇⠀⠀⠀⠀⠀⠠⢀⡾⠀
-⠀⡏⢠⠖⠓⡾⢿⡿⠀⠸⣿⣿⢠⠀⠢⣄⠀⠀⠀⢻⠀⠀
-⢸⠀⠈⠛⠚⠁⠀⠀⠺⠃⠈⠁⠐⠦⣴⠿⠀⠀⠀⢸⡆⠀
-⢸⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⠀
-⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⡄⠀
-⠀⠈⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠞⠁⣧⠀
-⠀⠀⡯⠙⠲⣄⡀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠖⠋⠀⠀⡟⠀
-⠀⠀⢳⣤⢡⣤⠉⠛⣲⡶⠒⠲⣞⠛⢉⣀⠀⠀⠀⣼⠃⠀
-⠀⠀⠀⠙⠓⠧⠴⠚⠉⠀⠀⠀⠙⢦⣀⠈⠁⣀⡴⠋⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠀⠀⠀⠀
-Алисочка, я тебя люблю !!!
-        """)
+@dp.message(Command("start"))
+async def command_start_handler(msg: types.Message) -> None:
+    if check_chat_db(abs(msg.chat.id)):
+        await msg.answer("Чат уже инициализирован !")
     else:
-        await msg.answer(reg_user(msg.from_user.id, msg.from_user.username, abs(msg.chat.id)))
+        await msg.answer("Чат инициализирован !")
+        create_table(abs(msg.chat.id))
 
 
-@dp.message_handler(commands=["run_game"])
+@dp.message(Command("reg"))
+async def echo_bot(msg: types.Message) -> None:
+    await msg.answer(reg_user(msg.from_user.id, abs(msg.chat.id)))
+
+
+@dp.message(Command("run_game"))
 async def echo_bot(msg: types.Message) -> None:
     today = datetime.now()
     winningDate = today.strftime("%Y-%m-%d")
-    formatted_dates = [date.strftime('%Y-%m-%d') for date in get_dates(abs(msg.chat.id))]
-    if winningDate not in formatted_dates:
-        win = add_winner(abs(msg.chat.id))
-        if(msg.from_user.username == "VagOnOff"):
-            await msg.answer(f"Ваз щас все пофикшу, а пока выиграл @{win} !!!")
-        else:
-            await msg.answer(f"Поздавряем, сегодня выиграл @{win}")
+    results_today = get_result_today(abs(msg.chat.id))
+    if results_today.size == 0:
+        winnerId = select_winner(abs(msg.chat.id))
+        winnerUsername = await get_username(msg.chat.id, winnerId)
+        add_winner(abs(msg.chat.id), winnerId)
+        await msg.answer(f"Поздравляем, сегодня выиграл @{winnerUsername}")
     else:
-        await msg.answer(f"Сегодня уже была игра ! Победил @{winner_by_date(abs(msg.chat.id), winningDate)}")
+        winnerUsername = await get_username(msg.chat.id, winner_by_date(abs(msg.chat.id), winningDate))
+        await msg.answer(f"Сегодня уже была игра ! Победил @{winnerUsername}")
 
 
-@dp.message_handler(commands=["show_table"])
+@dp.message(Command("show_table"))
 async def echo_bot(msg: types.Message) -> None:
-    results = showWinningCount(abs(msg.chat.id))
+    results = show_winning_count(abs(msg.chat.id))
     formattedAnswer = """Таблица лидеров: \n"""
     placeNumber = 1
     for i in results:
-        formattedAnswer = formattedAnswer + f"{placeNumber}: {get_username_by_id(i[0], abs(msg.chat.id))} - {i[1]}\n"
+        formattedAnswer = formattedAnswer + f"{placeNumber}: {await get_username(msg.chat.id, i[0])} - {i[1]}\n"
         placeNumber += 1
     await msg.answer(f"""{formattedAnswer}""")
 
 
+async def main() -> None:
+    await dp.start_polling(bot)
+
+
 if __name__ == "__main__":
-    executor.start_polling(dispatcher=dp)
+    asyncio.run(main())
